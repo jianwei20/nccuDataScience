@@ -7,8 +7,8 @@ or
 <p>Your R code should output and round the maximum value for each column.</p>
 
 * Read in a input file
- * examples = test.1.csv
+  * examples = test.1.csv
 * Output summary file (please follow the same format of the result.csv, i.e., round number into two digitals)
- * example =  result.csv
+  * example =  result.csv
 
 <p>Please update your code into Github and give its corresponding link.</p>
