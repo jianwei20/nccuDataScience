@@ -10,5 +10,3 @@ or
   * examples = test.1.csv
 * Output summary file (please follow the same format of the result.csv, i.e., round number into two digitals)
   * example =  result.csv
-
-<p>Please update your code into Github and give its corresponding link.</p>
