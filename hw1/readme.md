@@ -9,6 +9,5 @@ or
 * Read in a input file
  * examples = test.1.csv
  
-  * examples = test.1.csv
 * Output summary file (please follow the same format of the result.csv, i.e., round number into two digitals)
-  * example =  result.csv
+ * example =  result.csv
