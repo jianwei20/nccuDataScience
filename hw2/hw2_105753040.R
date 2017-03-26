@@ -1,15 +1,121 @@
-query_func<-function(query_m, i)
+#sensitivity evaluation
+sensitivity_func<-function(query_m,d)
 {
   if(query_m == "male"){
-    which.min(i)
+    TP <- 0
+    FN <- 0
+    len <- length(d$persons)
+    for(x in c(1:len)){
+      if(d[x,"reference"]=="male" && d[x,"prediction"]=="male"){
+        TP <- TP + d[x,"pred.score"]
+      }
+      else if(d[x,"reference"]=="male" && d[x,"prediction"]=="female"){
+        FN <- FN + d[x,"pred.score"]
+      }
+    }
+
+    return(round(TP/(TP+FN),digits = 2))
   }
   else if (query_m == "female") {
-    which.max(i)
-  } else {
+    TP <- 0
+    FN <- 0
+    len <- length(d$persons)
+    for(x in c(1:len)){
+      if(d[x,"reference"]=="female" && d[x,"prediction"]=="female"){
+        TP <- TP + (1-d[x,"pred.score"])
+      }
+      else if(d[x,"reference"]=="female" && d[x,"prediction"]=="male"){
+        FN <- FN + (1-d[x,"pred.score"])
+      }
+    }
+    return(round(TP/(TP+FN),digits = 2))
+  } 
+  else {
     stop(paste("ERROR: unknown query function", query_m))
   }
 }
 
+#specificity evaluation
+specificity_func<-function(query_m,d)
+{
+  if(query_m == "male"){
+    FP <- 0
+    TN <- 0
+    len <- length(d$persons)
+    for(x in c(1:len)){
+      if(d[x,"reference"]=="female" && d[x,"prediction"]=="male"){
+        FP <- FP + d[x,"pred.score"]
+      }
+      else if(d[x,"reference"]=="female" && d[x,"prediction"]=="female"){
+        TN <- TN + d[x,"pred.score"]
+      }
+    }
+    
+    return(round(TN/(TN+FP),digits = 2))
+  }
+  else if (query_m == "female") {
+    TN <- 0
+    FP <- 0
+    len <- length(d$persons)
+    for(x in c(1:len)){
+      if(d[x,"reference"]=="male" && d[x,"prediction"]=="female"){
+        FP <- FP + (1-d[x,"pred.score"])
+      }
+      else if(d[x,"reference"]=="male" && d[x,"prediction"]=="male"){
+        TN <- TN + (1-d[x,"pred.score"])
+      }
+    }
+    return(round(TN/(TN+FP),digits = 2))
+  } 
+  else {
+    stop(paste("ERROR: unknown query function", query_m))
+  }
+}
+
+library('ROCR')
+# AUC evaluation
+AUC_func <- function(query_m, d){
+  eval <- prediction(d$pred.score,d$reference)
+  plot(performance(eval,"tpr","fpr"))
+  return(round(attributes(performance(eval,'auc'))$y.values[[1]],digits = 2))
+}
+
+#F1_func evaluation
+F1_func <- function(query_m, d, sensitivity){
+  if(query_m == "male"){
+    TP <- 0
+    FP <- 0
+    len <- length(d$persons)
+    for(x in c(1:len)){
+      if(d[x,"reference"]=="male" && d[x,"prediction"]=="male"){
+        TP <- TP + d[x,"pred.score"]
+      }
+      else if(d[x,"reference"]=="female" && d[x,"prediction"]=="male"){
+        FP <- FP + d[x,"pred.score"]
+      }
+    }
+    precision <- TP/(TP+FP)
+    return(round(2*precision*sensitivity/(precision+sensitivity),digits = 2))
+  }
+  else if (query_m == "female") {
+    TP <- 0
+    FP <- 0
+    len <- length(d$persons)
+    for(x in c(1:len)){
+      if(d[x,"reference"]=="female" && d[x,"prediction"]=="female"){
+        TP <- TP + (1-d[x,"pred.score"])
+      }
+      else if(d[x,"reference"]=="male" && d[x,"prediction"]=="female"){
+        FP <- FP + (1-d[x,"pred.score"])
+      }
+    }
+    precision <- TP/(TP+FP)
+    return(round(2*precision*sensitivity/(precision+sensitivity),digits = 2))    
+  } 
+  else {
+    stop(paste("ERROR: unknown query function", query_m))
+  }
+}
 # read parameters
 args = commandArgs(trailingOnly=TRUE)
 if (length(args)==0) {
@@ -41,26 +147,36 @@ print(paste("query mode :", query_m))
 print(paste("output file:", out_f))
 print(paste("files      :", files))
 
-# read files
 methods<-c()
-predis<-c()
-refers<-c()
+sensitivitys<-c()
+specificitys<-c()
+F1s<-c()
+AUCs<-c()
+
+#read files
 for(file in files)
 {
   method<-gsub(".csv", "", basename(file))
   d<-read.table(file, header=T,sep=",")
-  predis<-c(predis, d$weight[query_func(query_m, d$prediction)])
-  refers<-c(refers, d$height[query_func(query_m, d$reference)])
-  prevalence<-c(refers, d$height[query_func(query_m, d$pred.score)])
-  methods<-c(methods,method)
+  sensitivity <- sensitivity_func(query_m,d)
+  specificity <- specificity_func(query_m,d)
+  F1 <- F1_func(query_m, d, sensitivity)
+  AUC <- AUC_func(query_m,d)
+  
+  methods <- c(methods, method)
+  sensitivitys<-c(sensitivitys, sensitivity)
+  specificitys<-c(specificitys, specificity)
+  F1s<-c(F1s, F1)
+  AUCs<-c(AUCs, AUC)
 }
-print(methods)
-print(predis)
-print(refers)
+  methods <- c(methods,"highest")
+  sensitivitys<-c(sensitivitys, methods[which.max(sensitivitys)])
+  specificitys<-c(specificitys, methods[which.max(specificitys)])
+  F1s<-c(F1s, methods[which.max(F1s)])
+  AUCs<-c(AUCs, methods[which.max(AUCs)])
+  
+# output file
+out_data<-data.frame(methods, sensitivitys, specificitys, F1s, AUCs, stringsAsFactors = F)
+write.table(out_data, file=out_f, sep=",", row.names = FALSE)
 
-# out_data<-data.frame(set=names, wei=weis, hei=heis, stringsAsFactors = F)
-# index<-sapply(out_data[,c("wei","hei")], query_func, query_m=query_m)
-# 
-# # output file
-# out_data<-rbind(out_data,c(query_m,names[index]))
-# write.table(out_data, file=out_f, row.names = F, quote = F)
+
