@@ -126,14 +126,14 @@ if (length(args)==0) {
 i<-1 
 while(i < length(args))
 {
-  if(args[i] == "-query"){
+  if(args[i] == "--target"){
     query_m<-args[i+1]
     i<-i+1
-  }else if(args[i] == "-files"){
+  }else if(args[i] == "--files"){
     j<-grep("-", c(args[(i+1):length(args)], "-"))[1]
     files<-args[(i+1):(i+j-1)]
     i<-i+j-1
-  }else if(args[i] == "-out"){
+  }else if(args[i] == "--out"){
     out_f<-args[i+1]
     i<-i+1
   }else{
